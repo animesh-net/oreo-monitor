@@ -11,3 +11,7 @@ The server's scripts and images live in the private repository `oreo-cloud`.
 ## Changes
 
 `main` is protected. Every change goes through a pull request and is squash-merged by the owner.
+
+## License
+
+Copyright © 2026 Animesh Singh. Released under the [MIT License](LICENSE).
