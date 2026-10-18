@@ -13,3 +13,81 @@
   description or comment to remove it.
 - Commit author: the person whose GitHub account the session is using, never
   Claude.
+
+## Rules carried over from oreo.ai
+
+### Never
+
+- No secrets in the repo. API keys, tokens and passwords never go in code or
+  committed files; keep them in untracked local env files or the deployment
+  host.
+- Never commit `.env.local` or any file containing real secrets.
+- No `Co-Authored-By:`, `Co-committed-by:` or any other trailer that names an
+  AI agent (Claude, GitHub Copilot, GPT, ...). The git author and committer
+  must identify a real person. Agents must not change `user.name` or
+  `user.email` in persistent git config; if the environment defaults to an AI
+  identity, pass the person's identity per commit
+  (`git -c user.name=... -c user.email=... commit`).
+
+### README
+
+- Update `README.md` in the same commit as any user-facing change (behaviour,
+  setup, configuration, commands, architecture). A commit that changes
+  behaviour without updating the README is incomplete.
+
+### How to edit files
+
+1. Read the full target file before changing it. Never overwrite a file you
+   haven't read.
+2. Make the smallest change that solves the problem: edit only the lines that
+   need to change, don't reformat unrelated code, add comments only when the
+   _why_ is non-obvious, and don't introduce new abstractions or refactors
+   unless the task asks for them.
+3. Run the repo's checks (lint, format, tests) and fix every failure before
+   committing. Don't suppress errors.
+4. Run `git diff --staged` and scan for secrets (strings like `AIza`, `sk-`,
+   `Bearer`, real passwords, env file contents) before committing.
+
+### Commit messages
+
+- One line, present tense, under 72 characters, no body.
+- Capitalise the first letter: `Add backup check`, not `add backup check`.
+- Be specific about what changed; no filler like "various", "some", "misc",
+  "update".
+- Never commit WIP.
+
+### Branches
+
+- If a branch was created outside the naming convention (e.g. `claude/...`,
+  `fix-...`, `wip`), rename it before pushing more work: `git checkout -b
+  fix/<name_fix>` from it, push the new name, then ask before deleting the old
+  remote branch.
+
+### Pull requests
+
+- Title: same rules as commit messages.
+- One concern per PR; don't bundle unrelated fixes.
+- No commented-out code or leftover debug statements.
+- Description structure:
+
+  ```markdown
+  ## What changed
+
+  - One bullet per logical change: which file and what behaviour changed
+
+  ## Why
+
+  One or two sentences on the motivation. Link an issue if one exists.
+
+  ## How to test
+
+  Step-by-step instructions a reviewer can follow.
+
+  ## Checklist
+
+  - [ ] PR title starts with a capital letter and is ≤ 72 characters
+  - [ ] Repo checks pass
+  - [ ] No secrets committed (checked `git diff --staged`)
+  - [ ] No unrelated files changed
+  - [ ] No `Co-Authored-By` or AI attribution in commits or this description
+  ```
