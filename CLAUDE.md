@@ -14,9 +14,7 @@
 - Commit author: the person whose GitHub account the session is using, never
   Claude.
 
-## Rules carried over from oreo.ai
-
-### Never
+## Never
 
 - No secrets in the repo. API keys, tokens and passwords never go in code or
   committed files; keep them in untracked local env files or the deployment
@@ -29,13 +27,13 @@
   identity, pass the person's identity per commit
   (`git -c user.name=... -c user.email=... commit`).
 
-### README
+## README
 
 - Update `README.md` in the same commit as any user-facing change (behaviour,
   setup, configuration, commands, architecture). A commit that changes
   behaviour without updating the README is incomplete.
 
-### How to edit files
+## How to edit files
 
 1. Read the full target file before changing it. Never overwrite a file you
    haven't read.
@@ -48,7 +46,7 @@
 4. Run `git diff --staged` and scan for secrets (strings like `AIza`, `sk-`,
    `Bearer`, real passwords, env file contents) before committing.
 
-### Commit messages
+## Commit messages
 
 - One line, present tense, under 72 characters, no body.
 - Capitalise the first letter: `Add backup check`, not `add backup check`.
@@ -56,14 +54,14 @@
   "update".
 - Never commit WIP.
 
-### Branches
+## Branches
 
 - If a branch was created outside the naming convention (e.g. `claude/...`,
   `fix-...`, `wip`), rename it before pushing more work: `git checkout -b
   fix/<name_fix>` from it, push the new name, then ask before deleting the old
   remote branch.
 
-### Pull requests
+## Pull requests
 
 - Title: same rules as commit messages.
 - One concern per PR; don't bundle unrelated fixes.
