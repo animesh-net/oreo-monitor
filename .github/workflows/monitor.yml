@@ -1,10 +1,11 @@
 name: Monitor
 
-# Checks the Pi from outside every 5 minutes over Tailscale and sends ntfy alerts.
+# Checks the Pi from outside every hour over Tailscale and sends ntfy alerts.
 # GitHub may start scheduled runs a few minutes late; that is expected.
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    # Minute 17, away from the top of the hour when GitHub is busiest and starts runs late.
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Checks the **oreo-cloud** Raspberry Pi from outside, every 5 minutes, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
+Checks the **oreo-cloud** Raspberry Pi from outside, once an hour, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
 
 - Runs as a GitHub Actions workflow, so it needs no other server. The repository is public, so the minutes are free.
 - It holds no secrets or server details. Those are GitHub secrets.
@@ -22,7 +22,7 @@ Each run joins my tailnet as a temporary device and checks, in order, stopping a
 
 Alerts use the same titles as the Pi's own:
 
-- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. Sent again if the problem changes, and as a reminder every 6 hours.
+- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. With hourly runs that is one to two hours after the problem starts. Sent again if the problem changes, and as a reminder every 6 hours.
 - **Oreo Cloud OK** when the Pi is reachable again, with how long it was down.
 - Nothing during the router's daily restart, 05:55 to 06:15, unless the problem outlasts it.
 

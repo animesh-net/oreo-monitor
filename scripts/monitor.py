@@ -1,4 +1,4 @@
-"""One outside check of the oreo-cloud Pi, run by .github/workflows/monitor.yml every 5 minutes.
+"""One outside check of the oreo-cloud Pi, run by .github/workflows/monitor.yml every hour.
 
 The checks go in order and stop at the first one that fails, so the alert says where the
 problem is: the Pi on Tailscale, then SSH, then the heartbeat (Docker and the checks inside
