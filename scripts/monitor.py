@@ -116,10 +116,11 @@ def decide(state: dict, result: Result, now: datetime) -> tuple[dict, tuple[str,
     if result.ok:
         if status == "down":
             minutes = max(1, round((now - since).total_seconds() / 60))
+            unit = "minute" if minutes == 1 else "minutes"
             return {"status": "up"}, (
                 "Oreo Cloud OK",
-                f"✅ Pi reachable again after about {minutes} minutes "
-                f"(down from {_clock(since)}, back at {_clock(now)}).",
+                f"✅ The Pi passes every outside check again after about {minutes} {unit} "
+                f"(problem from {_clock(since)}, fixed at {_clock(now)}).",
             )
         return {"status": "up"}, None
 

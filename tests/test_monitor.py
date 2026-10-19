@@ -74,7 +74,9 @@ def test_two_failed_runs_alert_once_then_recovery_is_reported():
     _, sent = run([DOWN, DOWN, DOWN, DOWN, UP])
     assert [title for title, _ in sent] == ["Oreo Cloud NEEDS ATTENTION", "Oreo Cloud OK"]
     assert "since 12:00" in sent[0][1]
-    assert sent[1][1].startswith("✅ Pi reachable again after about 20 minutes")
+    assert sent[1][1].startswith(
+        "✅ The Pi passes every outside check again after about 20 minutes"
+    )
 
 
 def test_a_different_problem_alerts_again():

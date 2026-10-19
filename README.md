@@ -24,6 +24,10 @@ Alerts use the same titles as the Pi's own:
 - **Oreo Cloud OK** when the Pi is reachable again, with how long it was down.
 - Nothing during the router's daily restart, 05:55 to 06:15, unless the problem outlasts it.
 
+These are real alerts from a local test run: a drive not mounted, then Docker's heartbeat stopped, each followed by its fix.
+
+<img src="docs/images/alerts.png" alt="Example alerts from oreo-monitor" width="400">
+
 GitHub can start scheduled runs a few minutes late. The up/down state is kept in the Actions cache, so nothing about outages is published in this public repository, and the logs name only the failing step.
 
 ## Set up
