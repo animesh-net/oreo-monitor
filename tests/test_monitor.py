@@ -108,3 +108,15 @@ def test_tailnet_join_failure_does_not_check_or_change_state(monkeypatch, tmp_pa
     monkeypatch.setenv("STATE_FILE", str(tmp_path / "state.json"))
     assert monitor.main() == 1
     assert not (tmp_path / "state.json").exists()
+
+
+def test_tailscale_ping_accepts_a_relayed_pong(monkeypatch):
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        return type("Done", (), {"returncode": 0})()
+
+    monkeypatch.setattr(monitor.subprocess, "run", run)
+    assert monitor._tailscale_ping("oreo-cloud")
+    assert "--until-direct=false" in calls[0]

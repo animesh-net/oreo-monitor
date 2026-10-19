@@ -146,7 +146,9 @@ def decide(state: dict, result: Result, now: datetime) -> tuple[dict, tuple[str,
 
 
 def _tailscale_ping(host: str) -> bool:
-    command = ["sudo", "tailscale", "ping", "--c=3", "--timeout=5s", host]
+    # A pong through a DERP relay still proves the Pi is on the tailnet; without
+    # --until-direct=false, tailscale ping fails whenever no direct path forms.
+    command = ["sudo", "tailscale", "ping", "--c=3", "--timeout=5s", "--until-direct=false", host]
     return subprocess.run(command, capture_output=True, check=False).returncode == 0
 
 
