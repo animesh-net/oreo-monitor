@@ -1,0 +1,10 @@
+# Weekly pull requests that move the GitHub Actions, pinned to commit SHAs, forward.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
