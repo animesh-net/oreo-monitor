@@ -1,12 +1,60 @@
 # oreo-monitor
 
-External monitor for the oreo-cloud Raspberry Pi home server.
+Checks the **oreo-cloud** Raspberry Pi from outside, every 5 minutes, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
 
-- A GitHub Actions workflow checks the Pi every 5 minutes, including whether Docker is healthy.
-- Alerts go to the owner's phone. Credentials are stored as GitHub secrets, never in this repository.
-- Public repository, so the workflow minutes are free. It contains no server details or secrets.
+- Runs as a GitHub Actions workflow, so it needs no other server. The repository is public, so the minutes are free.
+- It holds no secrets or server details. Those are GitHub secrets.
+- The Pi's own code lives in the private repository `oreo-cloud`.
 
-The server's scripts and images live in the private repository `oreo-cloud`.
+## How it works
+
+Each run joins my tailnet as a temporary device and checks, in order, stopping at the first failure:
+
+| Step | If it fails, the alert says |
+| --- | --- |
+| The Pi answers on Tailscale | The Pi is off, has lost its network, or Tailscale on it stopped |
+| SSH answers | The system may be hung and need a power cycle |
+| The heartbeat answers | Docker or the `oreo` container is down: log in and restart Docker (this is manual on purpose) |
+| The heartbeat reports all checks passing | Which checks on the Pi are failing |
+| Immich answers through Caddy | The Pi is healthy but the website is not |
+
+Alerts use the same titles as the Pi's own:
+
+- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. Sent again if the problem changes, and as a reminder every 6 hours.
+- **Oreo Cloud OK** when the Pi is reachable again, with how long it was down.
+- Nothing during the router's daily restart, 05:55 to 06:15, unless the problem outlasts it.
+
+These are real alerts from a local test run: a drive not mounted, then Docker's heartbeat stopped, each followed by its fix.
+
+<img src="docs/images/alerts.png" alt="Example alerts from oreo-monitor" width="400">
+
+GitHub can start scheduled runs a few minutes late. The up/down state is kept in the Actions cache, so nothing about outages is published in this public repository, and the logs name only the failing step.
+
+## Set up
+
+1. **Tailscale tag and access.** In the tailnet's access controls, let a `tag:ci` device reach only the Pi's SSH, heartbeat and HTTPS ports:
+
+   ```json
+   "tagOwners": { "tag:ci": ["autogroup:admin"] },
+   "grants": [{ "src": ["tag:ci"], "dst": ["<pi-tailscale-ip>"], "ip": ["tcp:22", "tcp:8787", "tcp:443"] }]
+   ```
+
+2. **Tailscale OAuth client.** In the Tailscale admin console, under Settings and then OAuth clients, create a client with write access to **Auth Keys**, limited to `tag:ci`.
+
+3. **Repository secrets.** In this repository, under Settings, then Secrets and variables, then Actions, add:
+
+   | Secret | Value |
+   | --- | --- |
+   | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | From step 2 |
+   | `OREO_HOST` | The Pi's Tailscale name or address |
+   | `OREO_HEARTBEAT_TOKEN` | The same value as in the Pi's `.env` |
+   | `OREO_NTFY_URL` | The ntfy topic, the same as the Pi's |
+   | `OREO_NTFY_TOKEN` | Only if the topic is protected |
+   | `OREO_SITE_URL` | Optional: `https://cloud.animesh.org.in/api/server/ping` |
+
+4. **Try it.** Under Actions, open **Monitor** and choose **Run workflow**. A green run means the Pi passed every step.
+
+GitHub turns off scheduled workflows in a public repository after 60 days without any commits. Merging Dependabot's weekly pull requests counts as activity and keeps it running.
 
 ## Development
 

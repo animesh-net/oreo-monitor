@@ -1,0 +1,68 @@
+name: Monitor
+
+# Checks the Pi from outside every 5 minutes over Tailscale and sends ntfy alerts.
+# GitHub may start scheduled runs a few minutes late; that is expected.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write # to keep only the newest saved state
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Join the tailnet
+        id: tailscale
+        continue-on-error: true
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4.2.0
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      # The up/down state is kept in the Actions cache, not in a commit or an issue, so
+      # nothing about the Pi's outages is published in this public repository.
+      - name: Load the previous state
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: monitor-state.json
+          key: monitor-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: monitor-state-
+
+      - name: Check the Pi
+        env:
+          TAILSCALE_JOINED: ${{ steps.tailscale.outcome }}
+          OREO_HOST: ${{ secrets.OREO_HOST }}
+          OREO_HEARTBEAT_TOKEN: ${{ secrets.OREO_HEARTBEAT_TOKEN }}
+          OREO_NTFY_URL: ${{ secrets.OREO_NTFY_URL }}
+          OREO_NTFY_TOKEN: ${{ secrets.OREO_NTFY_TOKEN }}
+          OREO_SITE_URL: ${{ secrets.OREO_SITE_URL }}
+        run: python scripts/monitor.py
+
+      - name: Save the state
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: monitor-state.json
+          key: monitor-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Remove older saved states
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT: monitor-state-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/caches?key=monitor-state-&per_page=100" \
+            --jq ".actions_caches[] | select(.key != \"$CURRENT\") | .id" |
+            while read -r id; do
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/caches/$id" > /dev/null || true
+            done
