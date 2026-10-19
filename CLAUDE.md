@@ -63,6 +63,10 @@
 
 ## Pull requests
 
+- Always open pull requests against `main`. Never base one on another feature branch:
+  a squash merge deletes that branch and strands or misroutes the pull requests on
+  top of it. If work depends on an unmerged pull request, wait for it to merge, or
+  branch from `main` and rebase onto `main` once it has merged.
 - Title: same rules as commit messages.
 - One concern per PR; don't bundle unrelated fixes.
 - No commented-out code or leftover debug statements.
