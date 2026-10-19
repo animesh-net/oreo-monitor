@@ -22,7 +22,7 @@ Each run joins my tailnet as a temporary device and checks, in order, stopping a
 
 Alerts use the same titles as the Pi's own:
 
-- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. With hourly runs that is one to two hours after the problem starts. Sent again if the problem changes, and as a reminder every 6 hours.
+- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. With hourly runs that is one to two hours after the problem starts. Sent again if the problem changes, and as a reminder on every hourly run until it is fixed.
 - **Oreo Cloud OK** when the Pi is reachable again, with how long it was down.
 - Nothing during the router's daily restart, 05:55 to 06:15, unless the problem outlasts it.
 

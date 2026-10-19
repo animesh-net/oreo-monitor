@@ -30,7 +30,9 @@ from zoneinfo import ZoneInfo
 
 ZONE = ZoneInfo("Asia/Kolkata")
 QUIET_WINDOW = (time(5, 55), time(6, 15))  # the router restarts itself at 06:00
-REMINDER = timedelta(hours=6)
+# Runs are hourly, but GitHub starts them a few minutes early or late, so a lasting problem
+# is repeated on every failing run at least 50 minutes after the last alert.
+REMINDER = timedelta(minutes=50)
 HEARTBEAT_PORT = 8787
 
 

@@ -85,9 +85,19 @@ def test_a_different_problem_alerts_again():
     assert len(sent) == 2
 
 
-def test_reminder_every_six_hours():
-    _, sent = run([DOWN] * 80)  # 80 runs, 5 minutes apart: about 6.6 hours
+def test_reminder_on_every_hourly_run():
+    _, sent = run([DOWN] * 5, step=60)  # alert on the 2nd run, then a reminder each hour
+    assert len(sent) == 4
+
+
+def test_reminder_survives_a_run_starting_early():
+    _, sent = run([DOWN] * 3, step=55)
     assert len(sent) == 2
+
+
+def test_no_reminder_sooner_than_50_minutes():
+    _, sent = run([DOWN] * 10)  # 5 minutes apart: 45 minutes after the first alert
+    assert len(sent) == 1
 
 
 def test_router_restart_window_does_not_alert():
