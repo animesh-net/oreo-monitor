@@ -1,5 +1,7 @@
 # oreo-monitor
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Checks the **oreo-cloud** Raspberry Pi from outside, every 5 minutes, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
 
 - Runs as a GitHub Actions workflow, so it needs no other server. The repository is public, so the minutes are free.
