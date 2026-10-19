@@ -63,8 +63,17 @@
 
 ## Pull requests
 
+- Always open pull requests against `main`. Never base one on another feature branch:
+  a squash merge deletes that branch and strands or misroutes the pull requests on
+  top of it. If work depends on an unmerged pull request, wait for it to merge, or
+  branch from `main` and rebase onto `main` once it has merged.
 - Title: same rules as commit messages.
 - One concern per PR; don't bundle unrelated fixes.
+- When several pull requests are open at the same time, no two may change the same
+  file. Put every change to a shared file (for example all `README.md` edits) into
+  one pull request, or raise the pull requests one after another. This rule wins
+  over "one concern per PR" and over keeping a README change in the same pull
+  request as the behaviour it describes.
 - No commented-out code or leftover debug statements.
 - Description structure:
 

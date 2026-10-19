@@ -1,0 +1,11 @@
+# Tool settings only: this repository holds workflows and their helper scripts, not a package.
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
