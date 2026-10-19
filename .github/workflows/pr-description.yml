@@ -3,8 +3,12 @@ name: PR description
 # Removes co-author, agent-session and "generated/requested by" lines from pull request
 # descriptions. It edits silently: it never fails and never comments. Edits made with
 # GITHUB_TOKEN do not start another run, so it cannot loop.
+# pull_request_target, so it also gets write access on Dependabot's pull requests, whose
+# pull_request runs only get a read-only token. That is safe here because nothing from the
+# pull request is ever run: the cleaner comes from main, and the description is only read
+# as text.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, edited, reopened, synchronize]
 
 permissions:
@@ -15,16 +19,11 @@ jobs:
   description:
     runs-on: ubuntu-latest
     steps:
-      # The cleaner comes from main, so a branch that changes it cannot affect what runs
-      # here. Only while main has no cleaner yet (the pull request that adds it) is the
-      # pull request's own copy used.
+      # The cleaner always comes from main, so a branch that changes it cannot affect what
+      # runs here.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.repository.default_branch }}
-          path: main
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          path: pull-request
       - name: Tidy
         env:
           GH_TOKEN: ${{ github.token }}
@@ -36,9 +35,7 @@ jobs:
           # cleaner did not run, and the description is left exactly as it is. An empty
           # result is never saved.
           status=0
-          cleaner=main/scripts/clean_pr_body.py
-          [ -f "$cleaner" ] || cleaner=pull-request/scripts/clean_pr_body.py
-          python "$cleaner" < body.md > cleaned.md || status=$?
+          python scripts/clean_pr_body.py < body.md > cleaned.md || status=$?
           if [ "$status" -eq 1 ] && [ -s cleaned.md ]; then
             gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F body=@cleaned.md > /dev/null
           elif [ "$status" -gt 1 ]; then
