@@ -34,21 +34,30 @@ GitHub can start scheduled runs a few minutes late. The up/down state is kept in
 
 ## Set up
 
-1. **Tailscale tag and access.** In the tailnet's access controls, let a `tag:ci` device reach only the Pi's SSH, heartbeat and HTTPS ports:
+1. **Tailscale tag and access.** In the Tailscale admin console, under Access controls, then JSON editor, let a `tag:ci` device reach the Pi's SSH, heartbeat and HTTPS ports. Add to the existing file, keeping what is there:
 
-   ```json
-   "tagOwners": { "tag:ci": ["autogroup:admin"] },
-   "grants": [{ "src": ["tag:ci"], "dst": ["<pi-tailscale-ip>"], "ip": ["tcp:22", "tcp:8787", "tcp:443"] }]
-   ```
+   - this line just inside the file's outer `{` (or only the `tag:ci` entry, if a `tagOwners` block exists):
 
-2. **Tailscale OAuth client.** In the Tailscale admin console, under Settings and then OAuth clients, create a client with write access to **Auth Keys**, limited to `tag:ci`.
+     ```json
+     "tagOwners": { "tag:ci": ["autogroup:admin"] },
+     ```
+
+   - this entry inside the existing `"grants": [ … ]` list, with a comma after the entry before it:
+
+     ```json
+     { "src": ["tag:ci"], "dst": ["<pi-tailscale-ip>"], "ip": ["tcp:22", "tcp:8787", "tcp:443"] }
+     ```
+
+   If the file still has the default rule that allows everything, that rule already covers the runner; the entry above keeps it working once the default is removed.
+
+2. **Tailscale OAuth client.** Under Settings, then Trust credentials, add a credential of type OAuth with **Auth Keys: Write** and the tag `tag:ci`. The secret is shown only once; copy it straight into step 3. A secret that does not start with `tskey-client-` shows up as `invalid key: unable to validate API key` in the run log.
 
 3. **Repository secrets.** In this repository, under Settings, then Secrets and variables, then Actions, add:
 
    | Secret | Value |
    | --- | --- |
    | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | From step 2 |
-   | `OREO_HOST` | The Pi's Tailscale name or address |
+   | `OREO_HOST` | The Pi's Tailscale address (`tailscale ip -4` on the Pi); it needs no name lookup |
    | `OREO_HEARTBEAT_TOKEN` | The same value as in the Pi's `.env` |
    | `OREO_NTFY_URL` | The ntfy topic, the same as the Pi's |
    | `OREO_NTFY_TOKEN` | Only if the topic is protected |
