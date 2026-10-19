@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Checks the **oreo-cloud** Raspberry Pi from outside, every 5 minutes, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
+Checks the **oreo-cloud** Raspberry Pi from outside, once an hour, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
 
 - Runs as a GitHub Actions workflow, so it needs no other server. The repository is public, so the minutes are free.
 - It holds no secrets or server details. Those are GitHub secrets.
@@ -22,7 +22,7 @@ Each run joins my tailnet as a temporary device and checks, in order, stopping a
 
 Alerts use the same titles as the Pi's own:
 
-- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. Sent again if the problem changes, and as a reminder every 6 hours.
+- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. With hourly runs that is one to two hours after the problem starts. Sent again if the problem changes, and as a reminder every 6 hours.
 - **Oreo Cloud OK** when the Pi is reachable again, with how long it was down.
 - Nothing during the router's daily restart, 05:55 to 06:15, unless the problem outlasts it.
 
@@ -34,21 +34,30 @@ GitHub can start scheduled runs a few minutes late. The up/down state is kept in
 
 ## Set up
 
-1. **Tailscale tag and access.** In the tailnet's access controls, let a `tag:ci` device reach only the Pi's SSH, heartbeat and HTTPS ports:
+1. **Tailscale tag and access.** In the Tailscale admin console, under Access controls, then JSON editor, let a `tag:ci` device reach the Pi's SSH, heartbeat and HTTPS ports. Add to the existing file, keeping what is there:
 
-   ```json
-   "tagOwners": { "tag:ci": ["autogroup:admin"] },
-   "grants": [{ "src": ["tag:ci"], "dst": ["<pi-tailscale-ip>"], "ip": ["tcp:22", "tcp:8787", "tcp:443"] }]
-   ```
+   - this line just inside the file's outer `{` (or only the `tag:ci` entry, if a `tagOwners` block exists):
 
-2. **Tailscale OAuth client.** In the Tailscale admin console, under Settings and then OAuth clients, create a client with write access to **Auth Keys**, limited to `tag:ci`.
+     ```json
+     "tagOwners": { "tag:ci": ["autogroup:admin"] },
+     ```
+
+   - this entry inside the existing `"grants": [ … ]` list, with a comma after the entry before it:
+
+     ```json
+     { "src": ["tag:ci"], "dst": ["<pi-tailscale-ip>"], "ip": ["tcp:22", "tcp:8787", "tcp:443"] }
+     ```
+
+   If the file still has the default rule that allows everything, that rule already covers the runner; the entry above keeps it working once the default is removed.
+
+2. **Tailscale OAuth client.** Under Settings, then Trust credentials, add a credential of type OAuth with **Auth Keys: Write** and the tag `tag:ci`. The secret is shown only once; copy it straight into step 3. A secret that does not start with `tskey-client-` shows up as `invalid key: unable to validate API key` in the run log.
 
 3. **Repository secrets.** In this repository, under Settings, then Secrets and variables, then Actions, add:
 
    | Secret | Value |
    | --- | --- |
    | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | From step 2 |
-   | `OREO_HOST` | The Pi's Tailscale name or address |
+   | `OREO_HOST` | The Pi's Tailscale address (`tailscale ip -4` on the Pi); it needs no name lookup |
    | `OREO_HEARTBEAT_TOKEN` | The same value as in the Pi's `.env` |
    | `OREO_NTFY_URL` | The ntfy topic, the same as the Pi's |
    | `OREO_NTFY_TOKEN` | Only if the topic is protected |
