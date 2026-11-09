@@ -2,7 +2,8 @@
 
 The checks go in order and stop at the first one that fails, so the alert says where the
 problem is: the Pi on Tailscale, then SSH, then the heartbeat (Docker and the checks inside
-it), then Immich through Caddy.
+it, which cover oreo-ai's containers too), then Immich through Caddy, then oreo-ai through
+Caddy.
 
 An alert goes out only when a problem is seen twice in a row, so one missed run does not
 page anyone, and not during the router's daily restart. One message says when it is fixed.
@@ -13,6 +14,7 @@ Configuration (repository secrets, passed as environment variables):
   OREO_HEARTBEAT_TOKEN  the same token as in the Pi's .env
   OREO_NTFY_URL         ntfy topic for alerts (OREO_NTFY_TOKEN if it is protected)
   OREO_SITE_URL         optional, e.g. Immich's /api/server/ping address
+  OREO_AI_URL           optional, oreo-ai's /health address
 """
 
 import json
@@ -50,7 +52,9 @@ class Probes:
     http_get: Callable[[str, str | None], tuple[int | None, dict | None]]
 
 
-def probe(host: str, token: str, site_url: str | None, p: Probes) -> Result:
+def probe(
+    host: str, token: str, site_url: str | None, p: Probes, ai_url: str | None = None
+) -> Result:
     if not p.tailscale_ping(host):
         return Result(
             False,
@@ -97,6 +101,15 @@ def probe(host: str, token: str, site_url: str | None, p: Probes) -> Result:
                 False,
                 "site",
                 "The Pi is healthy but Immich does not answer through Caddy.",
+            )
+    if ai_url:
+        ai_status, _ = p.http_get(ai_url, None)
+        if ai_status != 200:
+            return Result(
+                False,
+                "ai",
+                "The Pi is healthy but oreo-ai does not answer through Caddy. On the Pi, "
+                "run bash ~/oreo-ai/scripts/oreo-ai.sh status, then docker logs oreo-ai-web.",
             )
     return Result(True, "up", "All checks pass.")
 
@@ -207,6 +220,7 @@ def main() -> int:
         os.environ["OREO_HEARTBEAT_TOKEN"],
         os.environ.get("OREO_SITE_URL") or None,
         Probes(_tailscale_ping, _tcp_open, _http_get),
+        os.environ.get("OREO_AI_URL") or None,
     )
     new_state, notification = decide(state, result, datetime.now(UTC))
     if notification:

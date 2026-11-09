@@ -12,15 +12,23 @@ NOON = datetime(2026, 10, 19, 6, 30, tzinfo=UTC)  # 12:00 in Asia/Kolkata
 HEALTHY = {"ok": True, "checks": [{"name": "load", "ok": True, "detail": "0.2"}]}
 
 
-def probes(ping=True, ssh=True, heartbeat=(200, HEALTHY), site=(200, None)):
+def probes(ping=True, ssh=True, heartbeat=(200, HEALTHY), site=(200, None), ai=(200, None)):
     def http_get(url, token):
-        return heartbeat if url.endswith("/heartbeat") else site
+        if url.endswith("/heartbeat"):
+            return heartbeat
+        return ai if url.endswith("/health") else site
 
     return monitor.Probes(lambda host: ping, lambda host, port: ssh, http_get)
 
 
 def check(**kwargs):
-    return monitor.probe("oreo-cloud", "token", "https://cloud.example/ping", probes(**kwargs))
+    return monitor.probe(
+        "oreo-cloud",
+        "token",
+        "https://cloud.example/ping",
+        probes(**kwargs),
+        "https://ai.example/health",
+    )
 
 
 def test_everything_up():
@@ -34,6 +42,18 @@ def test_stages_are_checked_in_order():
     assert check(heartbeat=(401, None)).stage == "token"
     assert check(site=(502, None)).stage == "site"
     assert check(site=(None, None)).stage == "site"
+    assert check(ai=(502, None)).stage == "ai"
+    assert check(ai=(None, None)).stage == "ai"
+
+
+def test_oreo_ai_must_answer_its_health_check():
+    # /health needs no sign-in, so anything but 200 means the app isn't serving.
+    assert check(ai=(302, None)).stage == "ai"
+    assert "oreo-ai.sh status" in check(ai=(None, None)).message
+
+
+def test_oreo_ai_is_skipped_without_its_url():
+    assert monitor.probe("oreo-cloud", "token", None, probes(ai=(None, None))).ok
 
 
 def test_docker_down_says_it_needs_a_manual_restart():
