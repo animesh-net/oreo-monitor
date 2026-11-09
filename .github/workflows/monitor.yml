@@ -49,6 +49,7 @@ jobs:
           OREO_NTFY_URL: ${{ secrets.OREO_NTFY_URL }}
           OREO_NTFY_TOKEN: ${{ secrets.OREO_NTFY_TOKEN }}
           OREO_SITE_URL: ${{ secrets.OREO_SITE_URL }}
+          OREO_AI_URL: ${{ secrets.OREO_AI_URL }}
         run: python scripts/monitor.py
 
       - name: Save the state

@@ -2,11 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Checks the **oreo-cloud** Raspberry Pi from outside, once an hour, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
+Checks the **oreo-cloud** Raspberry Pi, and the **oreo-ai** chat app it runs, from outside, once an hour, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
 
 - Runs as a GitHub Actions workflow, so it needs no other server. The repository is public, so the minutes are free.
 - It holds no secrets or server details. Those are GitHub secrets.
-- The Pi's own code lives in the private repository `oreo-cloud`.
+- The Pi's own code lives in the private repositories `oreo-cloud` and `oreo-ai`.
 
 ## How it works
 
@@ -17,8 +17,9 @@ Each run joins my tailnet as a temporary device and checks, in order, stopping a
 | The Pi answers on Tailscale | The Pi is off, has lost its network, or Tailscale on it stopped |
 | SSH answers | The system may be hung and need a power cycle |
 | The heartbeat answers | Docker or the `oreo` container is down: log in and restart Docker (this is manual on purpose) |
-| The heartbeat reports all checks passing | Which checks on the Pi are failing |
+| The heartbeat reports all checks passing | Which checks on the Pi are failing, including any oreo-ai container that is down |
 | Immich answers through Caddy | The Pi is healthy but the website is not |
+| oreo-ai answers through Caddy | The Pi is healthy but oreo-ai is not serving, with the commands to look at it |
 
 Alerts use the same titles as the Pi's own:
 
@@ -62,6 +63,7 @@ GitHub can start scheduled runs a few minutes late. The up/down state is kept in
    | `OREO_NTFY_URL` | The ntfy topic, the same as the Pi's |
    | `OREO_NTFY_TOKEN` | Only if the topic is protected |
    | `OREO_SITE_URL` | Optional: `https://cloud.animesh.org.in/api/server/ping` |
+   | `OREO_AI_URL` | Optional: `https://ai.animesh.org.in/health`, which answers 200 without signing in |
 
 4. **Try it.** Under Actions, open **Monitor** and choose **Run workflow**. A green run means the Pi passed every step.
 
