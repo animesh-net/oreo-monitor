@@ -1,91 +1,54 @@
-# oreo-monitor
+# Oreo Monitor
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+Checks the oreo-cloud Raspberry Pi and the oreo-ai app it runs from outside, every hour, as a GitHub Actions workflow, and sends an ntfy alert to my phone when something is down.
 
-Checks the **oreo-cloud** Raspberry Pi, and the **oreo-ai** chat app it runs, from outside, once an hour, and sends an alert to my phone when it is down. The Pi's own alerts cannot do that: when the Pi, its network or Docker stops, it can no longer warn anyone.
+Part of the Oreo stack: [oreo-ai](https://github.com/animesh-net/oreo-ai) · [oreo-code](https://github.com/animesh-net/oreo-code) · [oreo-cloud](https://github.com/animesh-net/oreo-cloud) · [oreo-monitor](https://github.com/animesh-net/oreo-monitor)
 
-- Runs as a GitHub Actions workflow, so it needs no other server. The repository is public, so the minutes are free.
-- It holds no secrets or server details. Those are GitHub secrets.
-- The Pi's own code lives in the private repositories `oreo-cloud` and `oreo-ai`.
+## Architecture
 
-## How it works
+- Each run joins the tailnet as a temporary `tag:ci` device and checks, stopping at the first failure: Tailscale ping, SSH, the Pi's heartbeat, Immich through Caddy, oreo-ai through Caddy.
+- Alerts (**Oreo Cloud NEEDS ATTENTION** / **Oreo Cloud OK**) go out after two failing runs in a row; nothing during the router's daily restart, 05:55 to 06:15.
+- The up/down state lives in the Actions cache, and all server details are GitHub secrets, so nothing private is in this public repo.
 
-Each run joins my tailnet as a temporary device and checks, in order, stopping at the first failure:
-
-| Step | If it fails, the alert says |
+| Path | What it is |
 | --- | --- |
-| The Pi answers on Tailscale | The Pi is off, has lost its network, or Tailscale on it stopped |
-| SSH answers | The system may be hung and need a power cycle |
-| The heartbeat answers | Docker or the `oreo` container is down: log in and restart Docker (this is manual on purpose) |
-| The heartbeat reports all checks passing | Which checks on the Pi are failing, including any oreo-ai container that is down |
-| Immich answers through Caddy | The Pi is healthy but the website is not |
-| oreo-ai answers through Caddy | The Pi is healthy but oreo-ai is not serving, with the commands to look at it |
+| `.github/workflows/monitor.yml` | Hourly schedule and manual run |
+| `scripts/monitor.py` | The checks and ntfy alerts |
+| `.github/workflows/ci.yml` | Pre-commit hooks and tests on PRs |
+| `scripts/check_commit_msg.py` | Commit message and PR title rules |
+| `scripts/clean_pr_body.py` | Strips AI footers from PR bodies |
+| `tests/` | pytest tests |
 
-Alerts use the same titles as the Pi's own:
+## Run it
 
-- **Oreo Cloud NEEDS ATTENTION** when a problem is seen on two runs in a row, so one missed run does not wake anyone. With hourly runs that is one to two hours after the problem starts. Sent again if the problem changes, and as a reminder on every hourly run until it is fixed.
-- **Oreo Cloud OK** when the Pi is reachable again, with how long it was down.
-- Nothing during the router's daily restart, 05:55 to 06:15, unless the problem outlasts it.
+- A Tailscale tailnet with the Pi on it
+- An ntfy topic (the same as the Pi's)
 
-These are real alerts from a local test run: a drive not mounted, then Docker's heartbeat stopped, each followed by its fix.
+1. In the Tailscale access controls, add `"tagOwners": { "tag:ci": ["autogroup:admin"] }` and this entry to `"grants"`:
 
-<img src="docs/images/alerts.png" alt="Example alerts from oreo-monitor" width="400">
+   ```json
+   { "src": ["tag:ci"], "dst": ["<pi-tailscale-ip>"], "ip": ["tcp:22", "tcp:8787", "tcp:443"] }
+   ```
 
-GitHub can start scheduled runs a few minutes late. The up/down state is kept in the Actions cache, so nothing about outages is published in this public repository, and the logs name only the failing step.
+2. Under Settings, then Trust credentials, add an OAuth credential with **Auth Keys: Write** and tag `tag:ci` (its secret starts with `tskey-client-`).
+3. Add these repository secrets under Settings, then Secrets and variables, then Actions:
 
-## Set up
+   | Setting | Default | What it is |
+   | --- | --- | --- |
+   | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | none | From step 2 |
+   | `OREO_HOST` | none | The Pi's Tailscale IP (`tailscale ip -4`) |
+   | `OREO_HEARTBEAT_TOKEN` | none | Same as in the Pi's `.env` |
+   | `OREO_NTFY_URL` | none | The ntfy topic; `OREO_NTFY_TOKEN` only if it is protected |
+   | `OREO_SITE_URL` | unset | Optional: `https://cloud.animesh.org.in/api/server/ping` |
+   | `OREO_AI_URL` | unset | Optional: `https://ai.animesh.org.in/health` |
 
-1. **Tailscale tag and access.** In the Tailscale admin console, under Access controls, then JSON editor, let a `tag:ci` device reach the Pi's SSH, heartbeat and HTTPS ports. Add to the existing file, keeping what is there:
+4. Under Actions, open **Monitor** and choose **Run workflow**; a green run means every check passed.
 
-   - this line just inside the file's outer `{` (or only the `tag:ci` entry, if a `tagOwners` block exists):
+GitHub turns off schedules after 60 days without commits; merging Dependabot's weekly PRs keeps it running.
 
-     ```json
-     "tagOwners": { "tag:ci": ["autogroup:admin"] },
-     ```
+## Develop
 
-   - this entry inside the existing `"grants": [ … ]` list, with a comma after the entry before it:
-
-     ```json
-     { "src": ["tag:ci"], "dst": ["<pi-tailscale-ip>"], "ip": ["tcp:22", "tcp:8787", "tcp:443"] }
-     ```
-
-   If the file still has the default rule that allows everything, that rule already covers the runner; the entry above keeps it working once the default is removed.
-
-2. **Tailscale OAuth client.** Under Settings, then Trust credentials, add a credential of type OAuth with **Auth Keys: Write** and the tag `tag:ci`. The secret is shown only once; copy it straight into step 3. A secret that does not start with `tskey-client-` shows up as `invalid key: unable to validate API key` in the run log.
-
-3. **Repository secrets.** In this repository, under Settings, then Secrets and variables, then Actions, add:
-
-   | Secret | Value |
-   | --- | --- |
-   | `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET` | From step 2 |
-   | `OREO_HOST` | The Pi's Tailscale address (`tailscale ip -4` on the Pi); it needs no name lookup |
-   | `OREO_HEARTBEAT_TOKEN` | The same value as in the Pi's `.env` |
-   | `OREO_NTFY_URL` | The ntfy topic, the same as the Pi's |
-   | `OREO_NTFY_TOKEN` | Only if the topic is protected |
-   | `OREO_SITE_URL` | Optional: `https://cloud.animesh.org.in/api/server/ping` |
-   | `OREO_AI_URL` | Optional: `https://ai.animesh.org.in/health`, which answers 200 without signing in |
-
-4. **Try it.** Under Actions, open **Monitor** and choose **Run workflow**. A green run means the Pi passed every step.
-
-GitHub turns off scheduled workflows in a public repository after 60 days without any commits. Merging Dependabot's weekly pull requests counts as activity and keeps it running.
-
-## Development
-
-```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install pre-commit pytest
-pre-commit install
-pytest
-```
-
-- Pre-commit hooks check formatting and YAML, check each commit message (one line, capitalised, at most 72 characters, no extra trailers), block commits to `main` and run the tests before a push. CI runs the same on every pull request, plus the pull request title; Dependabot's commits are checked by title only, since a squash merge keeps only the title.
-- The `PR description` workflow tidies each pull request description: it removes co-author and session lines and any "generated by" or "requested by" footer. It never fails and never comments.
-- To merge a Dependabot pull request, approve it and leave the merge button alone: the `Dependabot merge` workflow waits for the checks and squash-merges it with just its title, without the `Co-authored-by` and `Signed-off-by` lines GitHub's button would add.
-- Dependabot opens weekly pull requests for the GitHub Actions, which are pinned to commit SHAs.
-
-## Changes
-
-Every change goes through a pull request against `main` and is squash-merged by the owner. The rules are in `CLAUDE.md`.
+`pip install pre-commit pytest && pre-commit install && pytest`. Repo rules are in `CLAUDE.md`.
 
 ## License
 
