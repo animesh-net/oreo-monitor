@@ -2,6 +2,8 @@ import importlib.util
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 _spec = importlib.util.spec_from_file_location(
     "monitor", Path(__file__).parent.parent / "scripts" / "monitor.py"
 )
@@ -150,3 +152,56 @@ def test_tailscale_ping_accepts_a_relayed_pong(monkeypatch):
     monkeypatch.setattr(monitor.subprocess, "run", run)
     assert monitor._tailscale_ping("oreo-cloud")
     assert "--until-direct=false" in calls[0]
+
+
+def local(hour, minute):
+    return datetime(2026, 10, 19, hour, minute, tzinfo=monitor.ZONE)
+
+
+def test_night_window_covers_the_pi_being_off():
+    window = monitor.NIGHT_WINDOW
+    assert monitor.in_night_window(local(0, 30), window)
+    assert monitor.in_night_window(local(3, 17), window)
+    assert monitor.in_night_window(local(6, 44), window)
+    assert not monitor.in_night_window(local(0, 29), window)
+    assert not monitor.in_night_window(local(6, 45), window)
+    assert not monitor.in_night_window(local(12, 0), window)
+
+
+def test_night_window_crossing_midnight():
+    assert monitor.in_night_window(local(23, 30), "23:00-06:45")
+    assert monitor.in_night_window(local(0, 5), "23:00-06:45")
+    assert not monitor.in_night_window(local(22, 59), "23:00-06:45")
+    assert not monitor.in_night_window(local(6, 45), "23:00-06:45")
+
+
+def test_empty_night_window_is_off():
+    assert not monitor.in_night_window(local(3, 17), "")
+
+
+def test_night_window_skips_checks_and_keeps_state(monkeypatch, tmp_path, capsys):
+    class Night(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return local(3, 17).astimezone(tz)
+
+    state = tmp_path / "state.json"
+    saved = '{"status": "suspect", "since": "2026-10-18T18:47:00+00:00"}'
+    state.write_text(saved)
+    monkeypatch.setattr(monitor, "datetime", Night)
+    monkeypatch.delenv("OREO_QUIET_WINDOW", raising=False)
+    monkeypatch.setenv("TAILSCALE_JOINED", "success")
+    monkeypatch.setenv("STATE_FILE", str(state))
+    monkeypatch.setattr(monitor, "probe", lambda *a: pytest.fail("checks ran"))
+    monkeypatch.setattr(monitor, "_send", lambda *a: pytest.fail("alert sent"))
+    assert monitor.main() == 0
+    assert state.read_text() == saved
+    assert capsys.readouterr().out == (
+        "Inside the quiet window (00:30-06:45); the Pi was not checked.\n"
+    )
+
+
+def test_runs_outside_the_night_window_check_the_pi(monkeypatch):
+    monkeypatch.setenv("OREO_QUIET_WINDOW", "")
+    monkeypatch.setenv("TAILSCALE_JOINED", "failure")
+    assert monitor.main() == 1  # got past the window to the tailnet check
