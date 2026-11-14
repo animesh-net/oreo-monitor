@@ -8,6 +8,7 @@ Part of the Oreo stack: [oreo-ai](https://github.com/animesh-net/oreo-ai) · [or
 
 - Each run joins the tailnet as a temporary `tag:ci` device and checks, stopping at the first failure: Tailscale ping, SSH, the Pi's heartbeat, Immich through Caddy, oreo-ai through Caddy.
 - Alerts (**Oreo Cloud NEEDS ATTENTION** / **Oreo Cloud OK**) go out after two failing runs in a row; nothing during the router's daily restart, 05:55 to 06:15.
+- From 00:30 to 06:45, while the Pi is powered off for the night, runs check nothing and keep the saved state; `OREO_QUIET_WINDOW` (`HH:MM-HH:MM`, empty for none) changes it.
 - The up/down state lives in the Actions cache, and all server details are GitHub secrets, so nothing private is in this public repo.
 
 | Path | What it is |

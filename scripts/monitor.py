@@ -7,6 +7,8 @@ Caddy.
 
 An alert goes out only when a problem is seen twice in a row, so one missed run does not
 page anyone, and not during the router's daily restart. One message says when it is fixed.
+Inside the nightly quiet window, while the Pi is powered off, a run checks nothing and keeps
+the saved state as it was.
 Logs are public in this repository, so they name only the stage, never the details.
 
 Configuration (repository secrets, passed as environment variables):
@@ -15,6 +17,8 @@ Configuration (repository secrets, passed as environment variables):
   OREO_NTFY_URL         ntfy topic for alerts (OREO_NTFY_TOKEN if it is protected)
   OREO_SITE_URL         optional, e.g. Immich's /api/server/ping address
   OREO_AI_URL           optional, oreo-ai's /health address
+  OREO_QUIET_WINDOW     optional, HH:MM-HH:MM local time with no checks (default 00:30-06:45,
+                        empty for none)
 """
 
 import json
@@ -32,6 +36,8 @@ from zoneinfo import ZoneInfo
 
 ZONE = ZoneInfo("Asia/Kolkata")
 QUIET_WINDOW = (time(5, 55), time(6, 15))  # the router restarts itself at 06:00
+# The Pi powers itself off at 00:30 and wakes at 06:30; 06:45 gives it time to boot.
+NIGHT_WINDOW = "00:30-06:45"
 # Runs are hourly, but GitHub starts them a few minutes early or late, so a lasting problem
 # is repeated on every failing run at least 50 minutes after the last alert.
 REMINDER = timedelta(minutes=50)
@@ -123,6 +129,17 @@ def in_quiet_window(moment: datetime) -> bool:
     return start <= moment.astimezone(ZONE).time() < end
 
 
+def in_night_window(moment: datetime, window: str) -> bool:
+    """Whether moment is inside an HH:MM-HH:MM local window, which may cross midnight."""
+    if not window:
+        return False
+    start, end = (time.fromisoformat(part.strip()) for part in window.split("-"))
+    clock = moment.astimezone(ZONE).time()
+    if start <= end:
+        return start <= clock < end
+    return clock >= start or clock < end
+
+
 def decide(state: dict, result: Result, now: datetime) -> tuple[dict, tuple[str, str] | None]:
     """The next state and, when one is due, a (title, message) to send."""
     status = state.get("status", "up")
@@ -206,6 +223,10 @@ def _send(title: str, message: str) -> None:
 
 
 def main() -> int:
+    window = os.environ.get("OREO_QUIET_WINDOW", NIGHT_WINDOW)
+    if in_night_window(datetime.now(UTC), window):
+        print(f"Inside the quiet window ({window}); the Pi was not checked.")
+        return 0
     if os.environ.get("TAILSCALE_JOINED") != "success":
         # The runner could not join the tailnet: a monitor problem, not a Pi problem.
         print("Could not join the tailnet; the Pi was not checked.")
