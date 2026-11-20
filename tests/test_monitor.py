@@ -160,11 +160,13 @@ def local(hour, minute):
 
 def test_night_window_covers_the_pi_being_off():
     window = monitor.NIGHT_WINDOW
-    assert monitor.in_night_window(local(0, 30), window)
+    assert monitor.in_night_window(local(22, 30), window)
+    assert monitor.in_night_window(local(23, 59), window)
+    assert monitor.in_night_window(local(0, 0), window)
     assert monitor.in_night_window(local(3, 17), window)
-    assert monitor.in_night_window(local(6, 44), window)
-    assert not monitor.in_night_window(local(0, 29), window)
-    assert not monitor.in_night_window(local(6, 45), window)
+    assert monitor.in_night_window(local(8, 44), window)
+    assert not monitor.in_night_window(local(22, 29), window)
+    assert not monitor.in_night_window(local(8, 45), window)
     assert not monitor.in_night_window(local(12, 0), window)
 
 
@@ -177,6 +179,12 @@ def test_night_window_crossing_midnight():
 
 def test_empty_night_window_is_off():
     assert not monitor.in_night_window(local(3, 17), "")
+
+
+def test_off_night_window_is_off():
+    assert not monitor.in_night_window(local(3, 17), "off")
+    assert not monitor.in_night_window(local(23, 0), "OFF")
+    assert not monitor.in_night_window(local(23, 0), " Off ")
 
 
 def test_night_window_skips_checks_and_keeps_state(monkeypatch, tmp_path, capsys):
@@ -197,7 +205,7 @@ def test_night_window_skips_checks_and_keeps_state(monkeypatch, tmp_path, capsys
     assert monitor.main() == 0
     assert state.read_text() == saved
     assert capsys.readouterr().out == (
-        "Inside the quiet window (00:30-06:45); the Pi was not checked.\n"
+        "Inside the quiet window (22:30-08:45); the Pi was not checked.\n"
     )
 
 
@@ -205,3 +213,9 @@ def test_runs_outside_the_night_window_check_the_pi(monkeypatch):
     monkeypatch.setenv("OREO_QUIET_WINDOW", "")
     monkeypatch.setenv("TAILSCALE_JOINED", "failure")
     assert monitor.main() == 1  # got past the window to the tailnet check
+
+
+def test_off_night_window_checks_the_pi(monkeypatch):
+    monkeypatch.setenv("OREO_QUIET_WINDOW", "off")
+    monkeypatch.setenv("TAILSCALE_JOINED", "failure")
+    assert monitor.main() == 1

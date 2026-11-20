@@ -17,8 +17,8 @@ Configuration (repository secrets, passed as environment variables):
   OREO_NTFY_URL         ntfy topic for alerts (OREO_NTFY_TOKEN if it is protected)
   OREO_SITE_URL         optional, e.g. Immich's /api/server/ping address
   OREO_AI_URL           optional, oreo-ai's /health address
-  OREO_QUIET_WINDOW     optional, HH:MM-HH:MM local time with no checks (default 00:30-06:45,
-                        empty for none)
+  OREO_QUIET_WINDOW     optional repository variable, HH:MM-HH:MM local time with no checks
+                        (default 22:30-08:45, empty or off for none)
 """
 
 import json
@@ -36,8 +36,8 @@ from zoneinfo import ZoneInfo
 
 ZONE = ZoneInfo("Asia/Kolkata")
 QUIET_WINDOW = (time(5, 55), time(6, 15))  # the router restarts itself at 06:00
-# The Pi powers itself off at 00:30 and wakes at 06:30; 06:45 gives it time to boot.
-NIGHT_WINDOW = "00:30-06:45"
+# The Pi powers itself off at 22:30 and wakes at 08:30; 08:45 gives it time to boot.
+NIGHT_WINDOW = "22:30-08:45"
 # Runs are hourly, but GitHub starts them a few minutes early or late, so a lasting problem
 # is repeated on every failing run at least 50 minutes after the last alert.
 REMINDER = timedelta(minutes=50)
@@ -131,7 +131,7 @@ def in_quiet_window(moment: datetime) -> bool:
 
 def in_night_window(moment: datetime, window: str) -> bool:
     """Whether moment is inside an HH:MM-HH:MM local window, which may cross midnight."""
-    if not window:
+    if not window or window.strip().lower() == "off":
         return False
     start, end = (time.fromisoformat(part.strip()) for part in window.split("-"))
     clock = moment.astimezone(ZONE).time()

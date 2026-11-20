@@ -50,6 +50,7 @@ jobs:
           OREO_NTFY_TOKEN: ${{ secrets.OREO_NTFY_TOKEN }}
           OREO_SITE_URL: ${{ secrets.OREO_SITE_URL }}
           OREO_AI_URL: ${{ secrets.OREO_AI_URL }}
+          OREO_QUIET_WINDOW: ${{ vars.OREO_QUIET_WINDOW || '22:30-08:45' }}
         run: python scripts/monitor.py
 
       - name: Save the state
